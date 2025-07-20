@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"os"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 var (
@@ -21,7 +24,15 @@ func SimulateStoreFile(ctx context.Context) error {
 			fmt.Println("Context cancelled, storing File stopped")
 			return ctx.Err()
 		case <-time.After(CreateJitteredDelay()):
-			fmt.Println("File stored")
+			err := StoreFile(ctx)
+			if err != nil && (os.IsTimeout(err) || err == context.Canceled || err == context.DeadlineExceeded) {
+				return err
+			}
+			if err != nil {
+				fmt.Printf("Error storing file: %v", err)
+			} else {
+				fmt.Println("File stored successfully")
+			}
 		}
 	}
 }
@@ -30,4 +41,21 @@ func CreateJitteredDelay() time.Duration {
 	jitter := time.Duration(rand.Intn(maxDelay-minDelay)+minDelay) * time.Second
 	fmt.Printf("Jittered delay: %v\n", jitter)
 	return jitter
+}
+
+func StoreFile(ctx context.Context) error {
+	fileId := uuid.New()
+	objectId, err := StoreFileId(fileId)
+	if err != nil {
+		return fmt.Errorf("Error storing file ID: %w\n", err)
+	}
+	size, err := StoreFileBytes(fileId)
+	if err != nil {
+		return fmt.Errorf("Error storing file bytes: %w\n", err)
+	}
+	err = StoreFileMetadata(objectId, size)
+	if err != nil {
+		return fmt.Errorf("Error storing file metadata: %w\n", err)
+	}
+	return nil
 }
