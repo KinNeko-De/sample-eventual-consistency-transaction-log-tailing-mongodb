@@ -1,0 +1,48 @@
+name: mongodb-cluster
+
+networks:
+  inner-cluster-communication:
+
+volumes:
+  mongodb-db:
+  mongodb-configdb:
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--port", "27017"]
+    networks:
+      - inner-cluster-communication
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+    ports:
+      - 27017:27017
+    volumes:
+      - mongodb-db:/data/db
+      - mongodb-configdb:/data/configdb
+  mongodb-init:
+    image: mongo:latest
+    container_name: mongodb-init
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./mongodb-init-replica.js:/tmp/mongodb-init-replica.js:ro
+      - mongodb-db:/data/db
+      - mongodb-configdb:/data/configdb
+    command: >
+      sh -c "
+        echo 'Running replica set initialization...' &&
+        mongosh --host mongodb:27017 --file /tmp/mongodb-init-replica.js
+      "
+    networks:
+      - inner-cluster-communication
