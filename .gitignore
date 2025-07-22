@@ -16,3 +16,6 @@
 
 # Go workspace file
 go.work
+
+# Uploaded files to simulated storage
+producer/storage/*/
