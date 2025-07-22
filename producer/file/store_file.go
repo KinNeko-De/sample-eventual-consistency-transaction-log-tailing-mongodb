@@ -47,15 +47,15 @@ func StoreFile(ctx context.Context) error {
 	fileId := uuid.New()
 	objectId, err := StoreFileId(fileId)
 	if err != nil {
-		return fmt.Errorf("Error storing file ID: %w\n", err)
+		return fmt.Errorf("Error storing file ID: %w for %v\n", err, fileId)
 	}
 	size, mediaType, err := StoreFileBytes(fileId)
 	if err != nil {
-		return fmt.Errorf("Error storing file bytes: %w\n", err)
+		return fmt.Errorf("Error storing file bytes: %w for %v\n", err, fileId)
 	}
 	err = StoreFileMetadata(objectId, size, mediaType)
 	if err != nil {
-		return fmt.Errorf("Error storing file metadata: %w\n", err)
+		return fmt.Errorf("Error storing file metadata: %w for %v\n", err, fileId)
 	}
 	return nil
 }
