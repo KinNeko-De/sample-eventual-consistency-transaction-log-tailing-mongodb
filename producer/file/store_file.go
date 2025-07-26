@@ -50,7 +50,7 @@ func CreateJitteredDelay() time.Duration {
 
 func StoreFile(ctx context.Context) error {
 	fileId := uuid.New()
-	objectId, err := StoreFileId(fileId)
+	objectId, err := StoreFileId(ctx, fileId)
 	if err != nil {
 		return fmt.Errorf("Error storing file ID: %w for %v\n", err, fileId)
 	}

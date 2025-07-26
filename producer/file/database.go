@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -19,12 +20,27 @@ var (
 	client                   *mongo.Client
 )
 
-func StoreFileId(fileId uuid.UUID) (primitive.ObjectID, error) {
+func StoreFileId(ctx context.Context, fileId uuid.UUID) (primitive.ObjectID, error) {
 	if rand.Float64() < ErrorProbabilityFileId {
 		return primitive.NilObjectID, fmt.Errorf("Failed to write to database")
 	}
 
-	return primitive.NewObjectID(), nil
+	collection := client.Database("store_file").Collection("file")
+
+	objectId := primitive.NewObjectID()
+
+	document := bson.M{
+		"_id":       objectId,
+		"FileId":    primitive.Binary{Subtype: 4, Data: fileId[:]}, // store UUID as BSON binary subtype 4
+		"CreatedAt": time.Now().UTC(),
+	}
+
+	_, err := collection.InsertOne(ctx, document)
+	if err != nil {
+		return primitive.NilObjectID, fmt.Errorf("failed to insert file id: %w", err)
+	}
+
+	return objectId, nil
 }
 
 func StoreFileMetadata(objectId primitive.ObjectID, size uint64, mediaType string) error {
