@@ -8,6 +8,12 @@ db = db.getSiblingDB('store_file');
 if (!db.getCollectionNames().includes('file')) {
   db.createCollection('file');
   print('Created collection: file');
+
+  db.runCommand({
+    collMod: "file",
+    changeStreamPreAndPostImages: { enabled: true }
+  });
+  print('Enabled change stream pre- and post-images for file collection.');
 } else {
   print('Collection file already exists');
 }

@@ -19,3 +19,6 @@ go.work
 
 # Uploaded files to simulated storage
 producer/storage/*/
+
+# change stream resume token
+miner/app/
