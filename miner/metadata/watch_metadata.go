@@ -43,7 +43,7 @@ func WatchChangeStream(ctx context.Context) error {
 	fmt.Println("Watching change stream for file metadata...")
 
 	collection := client.Database("store_file").Collection("file")
-	changeStreamOptions := options.ChangeStream()
+	changeStreamOptions := options.ChangeStream().SetFullDocument(options.Required)
 	pipeline := mongo.Pipeline{
 		bson.D{{Key: "$match", Value: bson.D{
 			{Key: "operationType", Value: "update"},
