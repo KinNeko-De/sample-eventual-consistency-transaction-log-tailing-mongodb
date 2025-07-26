@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -105,6 +106,10 @@ func ResumeChangeStreamIfPossible(resumeToken bson.Raw, changeStreamOptions *opt
 	if resumeToken != nil {
 		fmt.Println("Resuming change stream from previous token")
 		changeStreamOptions = changeStreamOptions.SetResumeAfter(resumeToken)
+	} else {
+		// Fetch everything that is still retained in the oplog
+		// Do not use this in production
+		changeStreamOptions = changeStreamOptions.SetStartAtOperationTime(&primitive.Timestamp{T: 1})
 	}
 
 	return changeStreamOptions
