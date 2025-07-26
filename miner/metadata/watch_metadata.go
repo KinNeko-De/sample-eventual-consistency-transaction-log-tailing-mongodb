@@ -44,7 +44,13 @@ func WatchChangeStream(ctx context.Context) error {
 
 	collection := client.Database("store_file").Collection("file")
 	changeStreamOptions := options.ChangeStream()
-	changeStream, err := collection.Watch(ctx, mongo.Pipeline{}, changeStreamOptions)
+	pipeline := mongo.Pipeline{
+		bson.D{{Key: "$match", Value: bson.D{
+			{Key: "operationType", Value: "update"},
+			{Key: "updateDescription.updatedFields.StoredAt", Value: bson.D{{Key: "$exists", Value: true}}},
+		}}},
+	}
+	changeStream, err := collection.Watch(ctx, pipeline, changeStreamOptions)
 	if err != nil {
 		return fmt.Errorf("failed to watch change stream: %w", err)
 	}
