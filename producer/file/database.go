@@ -43,9 +43,23 @@ func StoreFileId(ctx context.Context, fileId uuid.UUID) (primitive.ObjectID, err
 	return objectId, nil
 }
 
-func StoreFileMetadata(objectId primitive.ObjectID, size uint64, mediaType string) error {
+func StoreFileMetadata(ctx context.Context, objectId primitive.ObjectID, size uint64, mediaType string) error {
 	if rand.Float64() < ErrorProbabilityMetadata {
 		return fmt.Errorf("Failed to write to database")
+	}
+
+	collection := client.Database("store_file").Collection("file")
+
+	document := bson.M{
+		"Extension": ".txt",
+		"MediaType": "text/plain",
+		"Size":      size,
+		"StoredAt":  time.Now().UTC(),
+	}
+
+	_, err := collection.UpdateByID(ctx, objectId, bson.M{"$set": document})
+	if err != nil {
+		return fmt.Errorf("failed to insert file metadata: %w", err)
 	}
 
 	return nil
