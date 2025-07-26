@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -27,9 +28,44 @@ func MiningFileMetadata(ctx context.Context) error {
 			fmt.Println("Context cancelled, mining file metadata stopped")
 			return ctx.Err()
 		default:
-			fmt.Println("Watching for file metadata..")
+			if err := WatchChangeStream(ctx); err != nil {
+				if ctx.Err() != nil && (ctx.Err() == context.Canceled || ctx.Err() == context.DeadlineExceeded) {
+					return ctx.Err()
+				}
+
+				return fmt.Errorf("failed to watch file metadata: %w", err)
+			}
 		}
 	}
+}
+
+func WatchChangeStream(ctx context.Context) error {
+	fmt.Println("Watching change stream for file metadata...")
+
+	collection := client.Database("store_file").Collection("file")
+	changeStreamOptions := options.ChangeStream()
+	changeStream, err := collection.Watch(ctx, mongo.Pipeline{}, changeStreamOptions)
+	if err != nil {
+		return fmt.Errorf("failed to watch change stream: %w", err)
+	}
+	defer changeStream.Close(ctx)
+
+	for changeStream.Next(ctx) {
+		var change bson.M
+		if err := changeStream.Decode(&change); err != nil {
+			return fmt.Errorf("failed to decode change stream event: %w", err)
+		}
+		fmt.Printf("Change detected: %v\n", change)
+	}
+
+	if err := changeStream.Err(); err != nil {
+		if err == context.Canceled {
+			return ctx.Err()
+		}
+		return fmt.Errorf("error in change stream: %w", err)
+	}
+
+	return nil
 }
 
 func initializeMongoClient(ctx context.Context) error {
