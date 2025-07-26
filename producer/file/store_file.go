@@ -18,6 +18,11 @@ var (
 func SimulateStoreFile(ctx context.Context) error {
 	fmt.Println("Storing File...")
 
+	if err := InitializeMongoClient(ctx); err != nil {
+		return err
+	}
+	defer DisconnectMongoClient()
+
 	for {
 		select {
 		case <-ctx.Done():
