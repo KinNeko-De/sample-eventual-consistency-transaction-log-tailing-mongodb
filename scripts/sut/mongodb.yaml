@@ -37,12 +37,15 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - ./mongodb-init-replica.js:/tmp/mongodb-init-replica.js:ro
+      - ./mongodb-init-collection-file.js:/tmp/mongodb-init-collection-file.js:ro
       - mongodb-db:/data/db
       - mongodb-configdb:/data/configdb
     command: >
       sh -c "
         echo 'Running replica set initialization...' &&
-        mongosh --host mongodb:27017 --file /tmp/mongodb-init-replica.js
+        mongosh --host mongodb:27017 --file /tmp/mongodb-init-replica.js &&
+        echo 'Running database initialization for file...' &&
+        mongosh --host mongodb:27017 --file /tmp/mongodb-init-collection-file.js
       "
     networks:
       - inner-cluster-communication
