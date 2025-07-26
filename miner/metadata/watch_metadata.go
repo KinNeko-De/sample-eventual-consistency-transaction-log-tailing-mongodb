@@ -3,6 +3,8 @@ package metadata
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -10,8 +12,12 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+const ResumeTokenDirectory = "app/data"
+const ResumeTokenFile = "resume_token.bin"
+
 var (
-	client *mongo.Client
+	client              *mongo.Client
+	ResumeTokenFilePath = filepath.Join(ResumeTokenDirectory, ResumeTokenFile)
 )
 
 func MiningFileMetadata(ctx context.Context) error {
@@ -42,8 +48,23 @@ func MiningFileMetadata(ctx context.Context) error {
 func WatchChangeStream(ctx context.Context) error {
 	fmt.Println("Watching change stream for file metadata...")
 
+	if err := EnsureResumeTokenDirectoryExists(); err != nil {
+		return fmt.Errorf("failed to create resume token directory: %w", err)
+	}
+
+	resumeToken, err := FetchResumeToken(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to fetch resume token: %w", err)
+	}
+
 	collection := client.Database("store_file").Collection("file")
 	changeStreamOptions := options.ChangeStream().SetFullDocument(options.Required)
+	changeStreamOptions = ResumeChangeStreamIfPossible(resumeToken, changeStreamOptions)
+
+	return WatchChangeStreamEvents(ctx, collection, changeStreamOptions)
+}
+
+func WatchChangeStreamEvents(ctx context.Context, collection *mongo.Collection, changeStreamOptions *options.ChangeStreamOptions) error {
 	pipeline := mongo.Pipeline{
 		bson.D{{Key: "$match", Value: bson.D{
 			{Key: "operationType", Value: "update"},
@@ -62,6 +83,12 @@ func WatchChangeStream(ctx context.Context) error {
 			return fmt.Errorf("failed to decode change stream event: %w", err)
 		}
 		fmt.Printf("Change detected: %v\n", change)
+
+		resumeToken := changeStream.ResumeToken()
+		err = StoreResumeToken(ctx, resumeToken)
+		if err != nil {
+			return fmt.Errorf("failed to store resume token: %w", err)
+		}
 	}
 
 	if err := changeStream.Err(); err != nil {
@@ -72,6 +99,36 @@ func WatchChangeStream(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func ResumeChangeStreamIfPossible(resumeToken bson.Raw, changeStreamOptions *options.ChangeStreamOptions) *options.ChangeStreamOptions {
+	if resumeToken != nil {
+		fmt.Println("Resuming change stream from previous token")
+		changeStreamOptions = changeStreamOptions.SetResumeAfter(resumeToken)
+	}
+
+	return changeStreamOptions
+}
+
+func EnsureResumeTokenDirectoryExists() error {
+	return os.MkdirAll(ResumeTokenDirectory, 0755)
+}
+
+func FetchResumeToken(ctx context.Context) (bson.Raw, error) {
+	data, err := os.ReadFile(ResumeTokenFilePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+
+		return nil, fmt.Errorf("failed to read resume token file: %w", err)
+	}
+
+	return bson.Raw(data), nil
+}
+
+func StoreResumeToken(ctx context.Context, token bson.Raw) error {
+	return os.WriteFile(ResumeTokenFilePath, token, 0644)
 }
 
 func initializeMongoClient(ctx context.Context) error {
