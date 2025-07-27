@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -53,6 +54,20 @@ func FetchIncompleteMetadata(ctx context.Context) ([]IncompleteMetadata, error) 
 		fmt.Printf("FileId: %s, CreatedAt: %s (UTC)\n", entry.FileId, entry.CreatedAt.UTC().Format(time.RFC3339))
 	}
 	return results, nil
+}
+
+func CleanFileMetadata(ctx context.Context, file IncompleteMetadata) error {
+	collection := client.Database("store_file").Collection("file")
+
+	filter := bson.M{"FileId": primitive.Binary{Subtype: 4, Data: file.FileId[:]}}
+
+	_, err := collection.DeleteOne(ctx, filter)
+	if err != nil {
+		return fmt.Errorf("failed to delete incomplete metadata for FileId %s: %w", file.FileId.String(), err)
+	}
+
+	fmt.Printf("Deleted incomplete metadata for FileId %s\n", file.FileId.String())
+	return nil
 }
 
 func UnmarshalBSON(data []byte) (IncompleteMetadata, error) {

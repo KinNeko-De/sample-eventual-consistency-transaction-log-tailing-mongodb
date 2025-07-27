@@ -32,6 +32,10 @@ func CleanWhatWasLeftBehind(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("Error cleaning file bytes for FileId %s: %w", file.FileId.String(), err)
 		}
+		err = CleanFileMetadata(ctx, file)
+		if err != nil {
+			return fmt.Errorf("Error deleting incomplete metadata for FileId %s: %w", file.FileId.String(), err)
+		}
 	}
 
 	fmt.Println("Cleaned")
