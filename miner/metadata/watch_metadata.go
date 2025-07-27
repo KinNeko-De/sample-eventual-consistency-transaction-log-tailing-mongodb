@@ -85,6 +85,11 @@ func WatchChangeStreamEvents(ctx context.Context, collection *mongo.Collection, 
 		}
 		fmt.Printf("Change detected: %v\n", change)
 
+		_, err := CreateFileStoredEvent(change)
+		if err != nil {
+			return fmt.Errorf("failed to create file stored event: %w", err)
+		}
+
 		resumeToken := changeStream.ResumeToken()
 		err = StoreResumeToken(ctx, resumeToken)
 		if err != nil {
