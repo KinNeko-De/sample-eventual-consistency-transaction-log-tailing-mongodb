@@ -22,9 +22,16 @@ func CleanWhatWasLeftBehind(ctx context.Context) error {
 	}
 	defer DisconnectMongoClient()
 
-	_, err = FetchIncompleteMetadata(ctx)
+	files, err := FetchIncompleteMetadata(ctx)
 	if err != nil {
 		return fmt.Errorf("Error fetching incomplete metadata: %w", err)
+	}
+
+	for _, file := range files {
+		err := CleanFileBytes(file)
+		if err != nil {
+			return fmt.Errorf("Error cleaning file bytes for FileId %s: %w", file.FileId.String(), err)
+		}
 	}
 
 	fmt.Println("Cleaned")
