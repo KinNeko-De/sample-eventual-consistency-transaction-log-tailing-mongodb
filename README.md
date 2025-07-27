@@ -11,5 +11,6 @@ Read my [article](https://medium.com/@kinneko-de/22cf9bf9e712), where I explain 
 1. Execute the script `./run-sut.sh` to start the MongoDB replica set. 
 2. Wait until you see `mongodb-init exited with code 0` in the terminal.
 3. Your MongoDB replica set is now ready and you can connect to it.
-4. Start the miner
-5. Start the producer
+4. Start the consumer
+5. Start the miner
+6. Start the producer
