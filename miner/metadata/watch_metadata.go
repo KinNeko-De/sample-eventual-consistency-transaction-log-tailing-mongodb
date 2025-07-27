@@ -29,6 +29,11 @@ func MiningFileMetadata(ctx context.Context) error {
 	}
 	defer disconnectMongoClient()
 
+	if err := CreateEventProducer(); err != nil {
+		return err
+	}
+	defer CloseEventProducer()
+
 	for {
 		select {
 		case <-ctx.Done():
