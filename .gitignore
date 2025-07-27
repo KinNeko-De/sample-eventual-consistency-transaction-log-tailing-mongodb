@@ -22,3 +22,6 @@ producer/storage/*/
 
 # change stream resume token
 miner/app/
+
+# downloaded protoc versions
+tools/protoc/*/

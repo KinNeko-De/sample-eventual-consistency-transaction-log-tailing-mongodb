@@ -1,0 +1,26 @@
+edition = "2023";
+
+package store_file.v1;
+
+import "google/protobuf/go_features.proto";
+import "google/protobuf/timestamp.proto";
+
+option features.(pb.go).api_level = API_OPAQUE;
+option go_package = "github.com/kinneko-de/sample-transaction-log-tailing-mongodb/golang/store_file/v1";
+
+message FileStored {
+  // Unique identifier for the file, format a UUID like '123e4567-e89b-12d3-a456-426614174000'
+  string file_id = 1;
+  // Timestamp when the file id was created
+  google.protobuf.Timestamp created_at = 2;
+  // Timestamp when the file metadata was stored
+  google.protobuf.Timestamp stored_at = 3;
+  // Size of the file in bytes
+  int64 size = 4;
+  // Media type of the file, e.g., "image/png", "application/pdf"
+  // for download, the media type is used to set the Content-Type header
+  string media_type = 5;
+  // File extension including a dot, e.g., ".png", ".pdf"
+  // For download generate a random file name and append the extension, ensures that the file name does not contains personal information or internal identifiers
+  string extension = 6;
+}
