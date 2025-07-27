@@ -16,8 +16,22 @@ var (
 func PublishEvent(event proto.Message) error {
 	fmt.Println("Publishing event...")
 
-	fmt.Println("Event publshed")
+	msgBytes, err := proto.Marshal(event)
+	if err != nil {
+		return fmt.Errorf("failed to marshal protobuf message: %w", err)
+	}
 
+	kafkaMsg := &sarama.ProducerMessage{
+		Topic: topic,
+		Value: sarama.ByteEncoder(msgBytes),
+	}
+
+	partition, offset, err := producer.SendMessage(kafkaMsg)
+	if err != nil {
+		return fmt.Errorf("failed to publish event to Kafka: %w", err)
+	}
+
+	fmt.Printf("Event published to partition %d at offset %d\n", partition, offset)
 	return nil
 }
 
