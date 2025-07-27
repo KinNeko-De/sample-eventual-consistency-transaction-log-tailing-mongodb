@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/IBM/sarama"
+	"google.golang.org/protobuf/proto"
 )
 
 var (
@@ -11,6 +12,14 @@ var (
 	topic    = "file-stored"
 	producer sarama.SyncProducer
 )
+
+func PublishEvent(event proto.Message) error {
+	fmt.Println("Publishing event...")
+
+	fmt.Println("Event publshed")
+
+	return nil
+}
 
 func CreateEventProducer() error {
 	if producer == nil {
