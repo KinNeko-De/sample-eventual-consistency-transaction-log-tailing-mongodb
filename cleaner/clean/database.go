@@ -5,13 +5,77 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var (
-	client *mongo.Client
+	client    *mongo.Client
+	OlderThan time.Duration = time.Hour
 )
+
+func FetchIncompleteMetadata(ctx context.Context) ([]IncompleteMetadata, error) {
+	collection := client.Database("store_file").Collection("file")
+
+	cutoff := time.Now().UTC().Add(-OlderThan)
+	filter := map[string]any{
+		"StoredAt":  map[string]any{"$exists": false},
+		"CreatedAt": map[string]any{"$lt": cutoff},
+	}
+
+	cursor, err := collection.Find(ctx, filter)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query incomplete metadata: %w", err)
+	}
+	defer cursor.Close(ctx)
+
+	var results []IncompleteMetadata
+	for cursor.Next(ctx) {
+		var rawDoc bson.Raw
+		if err := cursor.Decode(&rawDoc); err != nil {
+			return nil, fmt.Errorf("failed to decode raw document: %w", err)
+		}
+		document, err := UnmarshalBSON(rawDoc)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal IncompleteMetadata: %w", err)
+		}
+
+		results = append(results, document)
+	}
+	if err := cursor.Err(); err != nil {
+		return nil, fmt.Errorf("cursor error: %w", err)
+	}
+
+	fmt.Printf("Found %d incomplete metadata entries older than %s\n", len(results), OlderThan)
+	for _, entry := range results {
+		fmt.Printf("FileId: %s, CreatedAt: %s (UTC)\n", entry.FileId, entry.CreatedAt.UTC().Format(time.RFC3339))
+	}
+	return results, nil
+}
+
+func UnmarshalBSON(data []byte) (IncompleteMetadata, error) {
+	raw := bson.Raw(data)
+
+	fileIdVal := raw.Lookup("FileId")
+	_, fieldData := fileIdVal.Binary()
+	id, err := uuid.FromBytes(fieldData)
+	if err != nil {
+		return IncompleteMetadata{}, fmt.Errorf("FileId is not a valid UUID: %w", err)
+	}
+
+	createdAtVal := raw.Lookup("CreatedAt")
+	if createdAtVal.Type != bson.TypeDateTime {
+		return IncompleteMetadata{}, fmt.Errorf("CreatedAt is not a datetime type")
+	}
+	createdAt := createdAtVal.Time()
+
+	return IncompleteMetadata{
+		FileId:    id,
+		CreatedAt: createdAt,
+	}, nil
+}
 
 func InitializeMongoClient(ctx context.Context) error {
 	if client == nil {
