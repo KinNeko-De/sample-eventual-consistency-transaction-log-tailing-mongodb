@@ -17,6 +17,8 @@ var (
 	OlderThan time.Duration = time.Hour
 )
 
+const Limit int64 = 1000
+
 func FetchIncompleteMetadata(ctx context.Context) ([]IncompleteMetadata, error) {
 	collection := client.Database("store_file").Collection("file")
 
@@ -26,7 +28,8 @@ func FetchIncompleteMetadata(ctx context.Context) ([]IncompleteMetadata, error) 
 		"CreatedAt": map[string]any{"$lt": cutoff},
 	}
 
-	cursor, err := collection.Find(ctx, filter)
+	findOpts := options.Find().SetLimit(Limit)
+	cursor, err := collection.Find(ctx, filter, findOpts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query incomplete metadata: %w", err)
 	}
